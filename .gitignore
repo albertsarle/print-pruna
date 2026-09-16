@@ -1,0 +1,21 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Extensió empaquetada
+*.zip
+*.crx
+*.xpi
+*.pem
+web-ext-artifacts/
+
+# Logs
+*.log
+
+# Dependències (si mai s'afegeix tooling amb npm)
+node_modules/
