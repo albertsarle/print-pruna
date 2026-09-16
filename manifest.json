@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Block Removal - Clean Print",
+  "version": "1.0.0",
+  "description": "Selecciona un bloc de la pàgina i amaga la resta per imprimir-lo de forma neta.",
+  "permissions": ["activeTab", "scripting"],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "action": {
+    "default_title": "Block Removal - Clean Print",
+    "default_icon": {
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

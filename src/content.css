@@ -1,0 +1,10 @@
+html.brx-picking,
+html.brx-picking body {
+  cursor: crosshair !important;
+}
+
+.brx-hover-highlight {
+  outline: 2px solid #ff5252 !important;
+  outline-offset: -2px !important;
+  background-color: rgba(255, 82, 82, 0.08) !important;
+}
