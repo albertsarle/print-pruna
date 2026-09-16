@@ -4,6 +4,26 @@
 
   const browser = window.browser || window.chrome;
 
+  // Algunes pàgines capturen Ctrl/Cmd+P amb un listener de "keydown" a
+  // document (o body) i fan preventDefault() per mostrar el seu propi
+  // diàleg. Com que la fase de captura recorre window -> document -> ...,
+  // un listener capturador registrat a `window` s'executa sempre abans que
+  // un registrat a `document`, encara que el nostre s'afegeixi més tard.
+  // Aturem la propagació (sense preventDefault) perquè el listener de la
+  // pàgina no arribi a executar-se i el navegador faci la seva acció
+  // per defecte (obrir el diàleg d'impressió natiu).
+  window.addEventListener(
+    "keydown",
+    (event) => {
+      const key = (event.key || "").toLowerCase();
+      const isPrintCombo = (event.ctrlKey || event.metaKey) && !event.altKey && (key === "p" || event.code === "KeyP");
+      if (isPrintCombo) {
+        event.stopImmediatePropagation();
+      }
+    },
+    true,
+  );
+
   let picking = false;
   let mode = "select";
   let currentHoverEl = null;

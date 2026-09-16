@@ -6,7 +6,7 @@ actual per netejar-la abans d'imprimir-la.
 ## Ús
 
 1. Fes clic a la icona de l'extensió a la barra d'eines. S'obre un petit
-   menú amb dues opcions:
+   menú amb tres opcions:
    - **Selecciona**: marca el bloc que vulguis conservar; la resta de la
      pàgina s'amaga. El bloc seleccionat es reajusta (~90% d'ample,
      centrat) perquè no perdi llegibilitat si depenia d'un layout
@@ -14,15 +14,32 @@ actual per netejar-la abans d'imprimir-la.
    - **Elimina**: marca un bloc concret i el fa desaparèixer, mantenint la
      resta de la pàgina intacta. Es pot fer servir diverses vegades
      seguides per eliminar més d'un bloc.
-2. En qualsevol dels dos modes, el cursor canvia a una creueta i els
-   elements es ressalten en passar-hi el ratolí (blau per "Selecciona",
+   - **Imprimeix**: obre el diàleg d'impressió del navegador directament
+     (`window.print()`), sense passar pel teclat. Útil en pàgines que
+     bloquegen `Ctrl+P`/`Cmd+P` amb JavaScript, ja que aquesta crida es fa
+     des del "isolated world" de l'extensió i no es veu afectada encara
+     que la pàgina hagi sobreescrit `window.print`.
+2. En els modes "Selecciona" i "Elimina", el cursor canvia a una creueta i
+   els elements es ressalten en passar-hi el ratolí (blau per "Selecciona",
    vermell per "Elimina"). Fes clic sobre l'element desitjat per aplicar
    l'acció.
-3. Imprimeix la pàgina normalment (`Ctrl+P` / `Cmd+P`).
-4. Per tornar a l'estat original, recarrega la pàgina (F5).
+3. Per tornar a l'estat original, recarrega la pàgina (F5).
 
 Prem `Esc` en qualsevol moment per sortir del mode de marcatge sense fer cap
 canvi.
+
+### Sobre el bloqueig de `Ctrl+P`
+
+Quan s'activa qualsevol opció del menú, l'extensió també instal·la un
+listener de `keydown` a nivell de finestra (fase de captura) que intenta
+avançar-se als listeners que la pàgina hagi enganxat a `document` per
+bloquejar la drecera d'impressió. Com que la fase de captura recorre
+`window → document → ...`, el nostre listener s'executa sempre primer i
+atura la propagació sense cridar `preventDefault()`, deixant que el
+navegador faci la seva acció per defecte. És una mitigació "best effort":
+si la pàgina enganxa el seu listener directament a `window` abans que
+s'injecti l'extensió, aquest mètode no el pot superar — en aquest cas,
+utilitza l'opció "Imprimeix" del menú.
 
 ## Instal·lació en mode desenvolupador
 
