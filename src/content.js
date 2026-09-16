@@ -5,6 +5,7 @@
   const browser = window.browser || window.chrome;
 
   let picking = false;
+  let mode = "select";
   let currentHoverEl = null;
 
   function onMouseOver(event) {
@@ -25,7 +26,11 @@
   function onClick(event) {
     event.preventDefault();
     event.stopPropagation();
-    selectBlock(event.target);
+    if (mode === "remove") {
+      removeBlock(event.target);
+    } else {
+      selectBlock(event.target);
+    }
     stopPicking();
   }
 
@@ -33,6 +38,10 @@
     if (event.key === "Escape") {
       stopPicking();
     }
+  }
+
+  function removeBlock(el) {
+    el.style.setProperty("display", "none", "important");
   }
 
   function selectBlock(selectedEl) {
@@ -86,9 +95,11 @@
     selectedEl.style.setProperty("max-width", "100%", "important");
   }
 
-  function startPicking() {
+  function startPicking(pickMode) {
+    mode = pickMode;
     picking = true;
     document.documentElement.classList.add("brx-picking");
+    document.documentElement.classList.toggle("brx-mode-remove", mode === "remove");
     document.addEventListener("mouseover", onMouseOver, true);
     document.addEventListener("mouseout", onMouseOut, true);
     document.addEventListener("click", onClick, true);
@@ -97,7 +108,7 @@
 
   function stopPicking() {
     picking = false;
-    document.documentElement.classList.remove("brx-picking");
+    document.documentElement.classList.remove("brx-picking", "brx-mode-remove");
     if (currentHoverEl) {
       currentHoverEl.classList.remove("brx-hover-highlight");
       currentHoverEl = null;
@@ -109,10 +120,9 @@
   }
 
   browser.runtime.onMessage.addListener((message) => {
-    if (message?.type === "brx-toggle-picker") {
-      picking ? stopPicking() : startPicking();
+    if (message?.type === "brx-start-picker") {
+      if (picking) stopPicking();
+      startPicking(message.mode === "remove" ? "remove" : "select");
     }
   });
-
-  startPicking();
 })();

@@ -1,4 +1,4 @@
-importScripts("../vendor/browser-polyfill.js");
+const browser = window.browser || window.chrome;
 
 async function isContentScriptInjected(tabId) {
   try {
@@ -12,8 +12,9 @@ async function isContentScriptInjected(tabId) {
   }
 }
 
-browser.action.onClicked.addListener(async (tab) => {
-  if (!tab.id) return;
+async function startPicker(mode) {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) return;
 
   const alreadyInjected = await isContentScriptInjected(tab.id);
 
@@ -26,7 +27,11 @@ browser.action.onClicked.addListener(async (tab) => {
       target: { tabId: tab.id },
       files: ["src/content.js"],
     });
-  } else {
-    await browser.tabs.sendMessage(tab.id, { type: "brx-toggle-picker" });
   }
-});
+
+  await browser.tabs.sendMessage(tab.id, { type: "brx-start-picker", mode });
+  window.close();
+}
+
+document.getElementById("brx-select").addEventListener("click", () => startPicker("select"));
+document.getElementById("brx-remove").addEventListener("click", () => startPicker("remove"));

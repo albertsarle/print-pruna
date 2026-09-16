@@ -3,8 +3,15 @@ html.brx-picking body {
   cursor: crosshair !important;
 }
 
+/* Mode "Selecciona": blau, es manté el bloc marcat. */
 .brx-hover-highlight {
-  outline: 2px solid #ff5252 !important;
+  outline: 2px solid #2979ff !important;
   outline-offset: -2px !important;
+  background-color: rgba(41, 121, 255, 0.08) !important;
+}
+
+/* Mode "Elimina": vermell, el bloc marcat desapareix. */
+html.brx-mode-remove .brx-hover-highlight {
+  outline: 2px solid #ff5252 !important;
   background-color: rgba(255, 82, 82, 0.08) !important;
 }
