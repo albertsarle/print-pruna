@@ -9,6 +9,21 @@
         font-family: system-ui, sans-serif;
         background: #fff;
       }
+      .brx-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px 8px;
+        border-bottom: 1px solid #eee;
+      }
+      .brx-header img {
+        width: 20px;
+        height: 20px;
+      }
+      .brx-header strong {
+        font-size: 13px;
+        color: #3c1b45;
+      }
       .brx-menu {
         display: flex;
         flex-direction: column;
@@ -42,6 +57,10 @@
     </style>
   </head>
   <body>
+    <div class="brx-header">
+      <img src="../icons/icon48.png" alt="" />
+      <strong>PrintPruna</strong>
+    </div>
     <div class="brx-menu">
       <button id="brx-select" type="button">
         <strong>Selecciona</strong>

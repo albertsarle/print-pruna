@@ -1,7 +1,11 @@
-# Block Removal - Clean Print
+<p align="center">
+  <img src="docs/logo.png" alt="Logo de PrintPruna" width="180" />
+</p>
+
+<h1 align="center">PrintPruna</h1>
 
 Extensió per a Chrome i Firefox que permet marcar blocs HTML de la pàgina
-actual per netejar-la abans d'imprimir-la.
+actual per netejar-la abans d'imprimir-la a PDF.
 
 ## Ús
 
@@ -63,9 +67,10 @@ utilitza l'opció "Imprimeix" del menú.
 
 ```
 manifest.json     Manifest V3, compartit entre Chrome i Firefox
-src/popup.html    Menú de la icona amb les opcions "Selecciona" i "Elimina"
+src/popup.html    Menú de la icona amb les opcions "Selecciona", "Elimina" i "Imprimeix"
 src/popup.js      Injecta el content script (si cal) i envia el mode triat
 src/content.js    Lògica de hover, selecció/eliminació de blocs
 src/content.css   Estils del ressaltat en hover i el cursor de marcatge
-icons/            Icones de l'extensió
+icons/            Icones de l'extensió (icon48.png, icon128.png)
+docs/logo.png     Logo en gran per al README / store listing
 ```

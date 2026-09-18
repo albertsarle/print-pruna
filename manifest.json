@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Block Removal - Clean Print",
+  "name": "PrintPruna",
   "version": "1.0.0",
-  "description": "Selecciona un bloc de la pàgina i amaga la resta per imprimir-lo de forma neta.",
+  "description": "Selecciona, elimina o retalla blocs d'una pàgina abans d'imprimir-la a PDF.",
   "permissions": ["activeTab", "scripting"],
   "action": {
-    "default_title": "Block Removal - Clean Print",
+    "default_title": "PrintPruna",
     "default_popup": "src/popup.html",
     "default_icon": {
       "48": "icons/icon48.png",
