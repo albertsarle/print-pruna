@@ -267,13 +267,24 @@
     }
 
     const candidates = [...ancestors, el, ...el.querySelectorAll("*")];
-    const overrides = [];
+
+    // Fem primer una passada de només lectura (getComputedStyle) per a tots
+    // els candidats, i apliquem els canvis (setProperty) en una segona
+    // passada. Si llegíssim i escrivíssim node a node, cada escriptura
+    // invalidaria l'estil i forçaria un recàlcul síncron abans de la
+    // següent lectura ("layout thrashing"), que és especialment costós quan
+    // `el` té molts descendents.
+    const toOverride = [];
     for (const node of candidates) {
       const s = getComputedStyle(node);
       const clipsOverflow = s.overflow !== "visible" || s.overflowX !== "visible" || s.overflowY !== "visible";
       const needsWrap = /flex/.test(s.display) && s.flexWrap === "nowrap";
       if (!clipsOverflow && !needsWrap) continue;
+      toOverride.push({ node, clipsOverflow, needsWrap });
+    }
 
+    const overrides = [];
+    for (const { node, clipsOverflow, needsWrap } of toOverride) {
       overrides.push({
         node,
         overflow: node.style.getPropertyValue("overflow"),
