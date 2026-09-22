@@ -85,6 +85,52 @@
     knownElementVisibilityOverrides = [];
   }
 
+  // El carrusel de diagrames d'acords (les mans amb els dits sobre el
+  // mànec, a dalt de la pàgina) també s'amaga en imprimir, però no ell
+  // mateix: és un ANCESTRE seu qui rep `display: none` (el nom de la seva
+  // classe és un hash de CSS modules que canvia a cada desplegament, així
+  // que no hi confiem). Per detectar-ho sense dependre d'aquest nom fràgil,
+  // localitzem el carrusel pel seu propi contingut, que sí és estable
+  // (`[data-instrument="guitar"]`, present a cada traste dibuixat), i pugem
+  // pels seus ancestres restaurant el `display` de pantalla de qualsevol
+  // que la pàgina hagi amagat.
+  const DIAGRAM_MARKER_SELECTOR = "[data-instrument]";
+
+  function captureDiagramAncestorDisplays() {
+    if (!/(^|\.)cifraclub\.com$/i.test(location.hostname)) return [];
+
+    const marker = document.querySelector(DIAGRAM_MARKER_SELECTOR);
+    if (!marker) return [];
+
+    const chain = [];
+    let node = marker;
+    while (node && node !== document.body && node !== document.documentElement) {
+      chain.push({ node, screenDisplay: getComputedStyle(node).display });
+      node = node.parentElement;
+    }
+    return chain;
+  }
+
+  const diagramAncestorChain = captureDiagramAncestorDisplays();
+  let diagramVisibilityOverrides = [];
+
+  function forceVisibleDiagramAncestorsForPrint() {
+    for (const { node, screenDisplay } of diagramAncestorChain) {
+      if (getComputedStyle(node).display === "none") {
+        diagramVisibilityOverrides.push({ node, original: node.style.getPropertyValue("display") });
+        node.style.setProperty("display", screenDisplay === "none" ? "block" : screenDisplay, "important");
+      }
+    }
+  }
+
+  function restoreDiagramVisibility() {
+    for (const { node, original } of diagramVisibilityOverrides) {
+      if (original) node.style.setProperty("display", original, "important");
+      else node.style.removeProperty("display");
+    }
+    diagramVisibilityOverrides = [];
+  }
+
   // Moltes pàgines llargues fan servir `content-visibility: auto` (llistes,
   // seccions plegades...) perquè el navegador no arribi a renderitzar mai el
   // contingut que no s'ha desplaçat a la vista: és una optimització de
@@ -128,11 +174,13 @@
 
   function forcePrintVisibilityFixes() {
     forceVisibleKnownElementsForPrint();
+    forceVisibleDiagramAncestorsForPrint();
     forceContentVisibilityForPrint();
   }
 
   function restorePrintVisibilityFixes() {
     restoreKnownElementVisibility();
+    restoreDiagramVisibility();
     restoreContentVisibility();
   }
 
@@ -150,7 +198,22 @@
     else restorePrintVisibilityFixes();
   });
 
+  // cifraclub.com és un cas on desactivar tot el `@media print` de la pàgina
+  // fa més mal que bé: hem trobat, un darrere l'altre, tres mecanismes
+  // legítims que viuen en el mateix full d'estils i que aquesta neutralització
+  // també es carrega — la reorganització en columnes del text, la correcció
+  // de `content-visibility` per als blocs encara no renderitzats, i els
+  // pseudo-elements (`::before`/`::after`) que dibuixen els punts de
+  // digitació als diagrames d'acords. L'única part real del seu `@media
+  // print` que no volem és que amaga `.tabs`/`.Yrpkl`, i per això ja tenim
+  // una correcció pròpia i independent (`SITE_HIDDEN_ELEMENT_FIXES`) que no
+  // depèn de si aquesta funció s'executa o no. Per tant, en aquest lloc és
+  // més senzill i robust no tocar el seu `@media print` en absolut.
+  const DISABLE_PRINT_STYLES_EXCLUDED_HOSTS = [/(^|\.)cifraclub\.com$/i];
+
   function disablePrintStyles() {
+    if (DISABLE_PRINT_STYLES_EXCLUDED_HOSTS.some((hostTest) => hostTest.test(location.hostname))) return;
+
     printStyleOverrides = [];
     for (const sheet of Array.from(document.styleSheets)) {
       // content.css és el propi full d'estils de l'extensió (injectat via

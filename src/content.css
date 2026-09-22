@@ -49,6 +49,20 @@ html.brx-mode-resize body {
    i cursors són ajudes visuals només per a pantalla i no han d'aparèixer
    mai al document imprès. */
 @media print {
+  /* `disablePrintStyles()` a content.js neutralitza els `@media print`
+     propis de la pàgina (perquè la impressió sigui fidel al que es veu en
+     pantalla), però amb això també es perd qualsevol regla que la pàgina
+     fes servir per preservar colors i fons en imprimir. Per defecte el
+     navegador fa servir `print-color-adjust: economy`, que elimina colors
+     de fons i imatges per estalviar tinta — sovint fa que diagrames,
+     ressaltats o icones basats en `background` surtin apagats o en blanc.
+     Ho forcem a `exact` sempre, perquè el resultat sigui fidel al que es
+     veu en pantalla també en aquest aspecte. */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   .brx-hover-highlight,
   html.brx-mode-remove .brx-hover-highlight,
   .brx-resize-edge-highlight {
