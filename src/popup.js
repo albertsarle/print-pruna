@@ -51,7 +51,17 @@ async function printPage() {
   window.close();
 }
 
+async function removeAds() {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) return;
+
+  await ensureInjected(tab.id);
+  await browser.tabs.sendMessage(tab.id, { type: "brx-remove-ads" });
+  window.close();
+}
+
 document.getElementById("brx-select").addEventListener("click", () => startPicker("select"));
 document.getElementById("brx-remove").addEventListener("click", () => startPicker("remove"));
 document.getElementById("brx-resize").addEventListener("click", () => startPicker("resize"));
+document.getElementById("brx-remove-ads").addEventListener("click", removeAds);
 document.getElementById("brx-print").addEventListener("click", printPage);
