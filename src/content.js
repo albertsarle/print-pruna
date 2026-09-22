@@ -518,10 +518,22 @@
     return false;
   }
 
+  // getComputedStyle() força un recalcul d'estils i és car de cridar per a
+  // cada element d'una pàgina gran. `offsetParent` és una propietat molt més
+  // barata que ja és `null` sempre que l'element (o un ancestre) té
+  // `display:none`. Només és ambigu per a elements `position:fixed` (o
+  // `<body>`/`<html>`), on també val `null` encara que siguin visibles; en
+  // aquest cas concret, i només en aquest, recorrem a getComputedStyle.
+  function isHidden(el) {
+    if (el.offsetParent !== null) return false;
+    if (el === document.body || el === document.documentElement) return false;
+    return getComputedStyle(el).display === "none";
+  }
+
   function collapseEmptyAncestors(el) {
     let parent = el.parentElement;
     while (parent && parent !== document.body && parent !== document.documentElement) {
-      const hasVisibleChild = Array.from(parent.children).some((child) => getComputedStyle(child).display !== "none");
+      const hasVisibleChild = Array.from(parent.children).some((child) => !isHidden(child));
       if (hasVisibleChild || hasOwnText(parent)) break;
       removeBlock(parent);
       parent = parent.parentElement;
@@ -532,7 +544,7 @@
     const candidates = document.body ? document.body.querySelectorAll("*") : [];
     let hiddenCount = 0;
     for (const el of candidates) {
-      if (getComputedStyle(el).display === "none") continue;
+      if (isHidden(el)) continue;
       if (looksLikeAd(el)) {
         removeBlock(el);
         collapseEmptyAncestors(el);
