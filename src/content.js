@@ -32,6 +32,124 @@
   // navegador, i els restaurem quan el diàleg d'impressió es tanca.
   let printStyleOverrides = [];
 
+  // Algunes pàgines amaguen amb `@media print` no només la seva pròpia
+  // interfície (capçalera, menús, reproductor...) sinó també contingut que
+  // l'usuari sí que vol imprimir. El cas conegut és cifraclub.com: el bloc
+  // de tablatura ASCII (`.tabs`, dins l'article `.XjgwI`) i `.Yrpkl` es
+  // amaguen explícitament amb `display: none` en imprimir:
+  //
+  //   @media print { .XjgwI .tabs, .Yrpkl { display: none; } }
+  //
+  // Aquesta regla viu en un full d'estils servit sense capçaleres CORS
+  // (`akamai.sscdn.co`), així que ni tan sols podem llegir-la ni
+  // neutralitzar-la via CSSOM des del content script (`sheet.cssRules`
+  // llança `SecurityError`). Per això no mirem d'desactivar la regla: en
+  // lloc d'això, capturem el `display` de pantalla d'aquests elements just
+  // en injectar-nos (abans de qualsevol impressió) i, quan `getComputedStyle`
+  // ja reflecteix `@media print`, el restaurem si la pàgina l'ha amagat.
+  const SITE_HIDDEN_ELEMENT_FIXES = [
+    {
+      hostTest: /(^|\.)cifraclub\.com$/i,
+      selectors: [".tabs", ".Yrpkl"],
+    },
+  ];
+
+  // Capturat just en injectar-se (pàgina encara en mode pantalla, abans de
+  // qualsevol impressió) perquè a `beforeprint` ja és massa tard per saber
+  // quin era el `display` "normal" de l'element amagat.
+  function captureKnownElementDisplays() {
+    const fix = SITE_HIDDEN_ELEMENT_FIXES.find((f) => f.hostTest.test(location.hostname));
+    if (!fix) return [];
+
+    const elements = fix.selectors.flatMap((selector) => Array.from(document.querySelectorAll(selector)));
+    return elements.map((el) => ({ el, screenDisplay: getComputedStyle(el).display }));
+  }
+
+  const knownElementDisplays = captureKnownElementDisplays();
+  let knownElementVisibilityOverrides = [];
+
+  function forceVisibleKnownElementsForPrint() {
+    for (const { el, screenDisplay } of knownElementDisplays) {
+      if (getComputedStyle(el).display === "none") {
+        knownElementVisibilityOverrides.push({ el, original: el.style.getPropertyValue("display") });
+        el.style.setProperty("display", screenDisplay === "none" ? "block" : screenDisplay, "important");
+      }
+    }
+  }
+
+  function restoreKnownElementVisibility() {
+    for (const { el, original } of knownElementVisibilityOverrides) {
+      if (original) el.style.setProperty("display", original, "important");
+      else el.style.removeProperty("display");
+    }
+    knownElementVisibilityOverrides = [];
+  }
+
+  // Moltes pàgines llargues fan servir `content-visibility: auto` (llistes,
+  // seccions plegades...) perquè el navegador no arribi a renderitzar mai el
+  // contingut que no s'ha desplaçat a la vista: és una optimització de
+  // rendiment, però vol dir que aquell contingut és literalment buit al DOM
+  // fins que es renderitza. El cas real detectat a cifraclub.com: cada bloc
+  // de tablatura (`.kvMV`) té `content-visibility: auto`, i el propi full
+  // d'estils de la pàgina el força a `visible` dins un `@media print`
+  // perquè surti sencer en imprimir. Com que `disablePrintStyles()` (a sota)
+  // neutralitza TOTS els `@media print` de la pàgina per fer la impressió
+  // fidel a la pantalla, també neutralitza aquesta regla que era necessària
+  // (no un problema), i el resultat és tablatura en blanc al PDF. Ho
+  // arreglem de manera genèrica, vàlida per qualsevol lloc amb aquest patró:
+  // forcem `content-visibility: visible` a qualsevol element que la pàgina
+  // tingui en `auto` just abans d'imprimir.
+  let contentVisibilityOverrides = [];
+
+  function forceContentVisibilityForPrint() {
+    for (const el of document.querySelectorAll("*")) {
+      if (getComputedStyle(el).contentVisibility === "auto") {
+        contentVisibilityOverrides.push({ el, original: el.style.getPropertyValue("content-visibility") });
+        el.style.setProperty("content-visibility", "visible", "important");
+      }
+    }
+    // Forcem un reflow síncron abans de tornar: canviar `content-visibility`
+    // reactiva el layout dels descendents, però si el navegador encara no
+    // n'ha fet el recàlcul just quan comença a paginar per imprimir, el
+    // contingut es pot capturar amb l'alçada antiga (0). Llegir `offsetHeight`
+    // obliga el navegador a resoldre el layout abans de continuar.
+    for (const { el } of contentVisibilityOverrides) {
+      void el.offsetHeight;
+    }
+  }
+
+  function restoreContentVisibility() {
+    for (const { el, original } of contentVisibilityOverrides) {
+      if (original) el.style.setProperty("content-visibility", original, "important");
+      else el.style.removeProperty("content-visibility");
+    }
+    contentVisibilityOverrides = [];
+  }
+
+  function forcePrintVisibilityFixes() {
+    forceVisibleKnownElementsForPrint();
+    forceContentVisibilityForPrint();
+  }
+
+  function restorePrintVisibilityFixes() {
+    restoreKnownElementVisibility();
+    restoreContentVisibility();
+  }
+
+  window.addEventListener("beforeprint", forcePrintVisibilityFixes);
+  window.addEventListener("afterprint", restorePrintVisibilityFixes);
+
+  // A més de `beforeprint`/`afterprint` (que només es disparen durant una
+  // impressió real), escoltem el canvi de `matchMedia("print")`: és el que
+  // canvia en activar "Emulate CSS media type: print" a les DevTools, cosa
+  // que permet comprovar aquesta correcció sense obrir mai el diàleg
+  // d'impressió del sistema operatiu.
+  const printMediaQuery = window.matchMedia("print");
+  printMediaQuery.addEventListener("change", (event) => {
+    if (event.matches) forcePrintVisibilityFixes();
+    else restorePrintVisibilityFixes();
+  });
+
   function disablePrintStyles() {
     printStyleOverrides = [];
     for (const sheet of Array.from(document.styleSheets)) {
@@ -79,6 +197,11 @@
 
   function brxPrintWithoutPrintStyles() {
     disablePrintStyles();
+    // `beforeprint` ja crida `forcePrintVisibilityFixes()`, però l'apliquem
+    // també aquí, síncronament abans de `window.print()`: així el navegador
+    // té el màxim marge per completar el layout dels blocs que acabem de fer
+    // visibles abans de capturar la pàgina per a la impressió.
+    forcePrintVisibilityFixes();
     window.print();
   }
 
