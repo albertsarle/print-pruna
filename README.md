@@ -10,7 +10,7 @@ actual per netejar-la abans d'imprimir-la a PDF.
 ## Ús
 
 1. Fes clic a la icona de l'extensió a la barra d'eines. S'obre un petit
-   menú amb tres opcions:
+   menú amb quatre opcions:
    - **Selecciona**: marca el bloc que vulguis conservar; la resta de la
      pàgina s'amaga. El bloc seleccionat es reajusta (~90% d'ample,
      centrat) perquè no perdi llegibilitat si depenia d'un layout
@@ -18,19 +18,46 @@ actual per netejar-la abans d'imprimir-la a PDF.
    - **Elimina**: marca un bloc concret i el fa desaparèixer, mantenint la
      resta de la pàgina intacta. Es pot fer servir diverses vegades
      seguides per eliminar més d'un bloc.
+   - **Redimensiona**: arrossega qualsevol de les quatre vores d'un bloc per
+     canviar-ne l'amplada o l'alçada. La vora esquerra/superior segueix
+     visualment el cursor (en lloc de créixer sempre cap a l'altre costat).
+     El mode es manté actiu perquè es puguin ajustar diversos blocs seguits
+     sense reobrir el menú.
    - **Imprimeix**: obre el diàleg d'impressió del navegador directament
      (`window.print()`), sense passar pel teclat. Útil en pàgines que
      bloquegen `Ctrl+P`/`Cmd+P` amb JavaScript, ja que aquesta crida es fa
      des del "isolated world" de l'extensió i no es veu afectada encara
      que la pàgina hagi sobreescrit `window.print`.
-2. En els modes "Selecciona" i "Elimina", el cursor canvia a una creueta i
-   els elements es ressalten en passar-hi el ratolí (blau per "Selecciona",
-   vermell per "Elimina"). Fes clic sobre l'element desitjat per aplicar
-   l'acció.
+2. Cada mode té un cursor propi per identificar-lo d'un cop d'ull: creueta
+   per "Selecciona", `not-allowed` per "Elimina", i fletxes de
+   redimensionar per "Redimensiona" (que canvien a `↕`/`↔` en apropar-se a
+   una vora concreta, i a una mà durant l'arrossegament). Els elements es
+   ressalten en passar-hi el ratolí (blau per "Selecciona", vermell per
+   "Elimina", taronja discontinu per la vora activa a "Redimensiona"). Fes
+   clic (o arrossega, en el cas de "Redimensiona") sobre l'element desitjat
+   per aplicar l'acció.
 3. Per tornar a l'estat original, recarrega la pàgina (F5).
 
-Prem `Esc` en qualsevol moment per sortir del mode de marcatge sense fer cap
-canvi.
+Prem `Esc` en qualsevol moment per sortir del mode de marcatge —o
+cancel·lar un arrossegament en curs a "Redimensiona"— sense fer cap canvi.
+
+### Redimensionar sense amagar contingut
+
+Molts blocs de pàgines reals (carrusels, taules d'acords, widgets amb
+scroll horitzontal) tenen `overflow:hidden` o `flex-wrap:nowrap` pensats
+per a una mida fixa. Si només es canviés `width`/`height`, el contingut
+seguiria retallat encara que el bloc creixés. Per això, en començar a
+arrossegar una vora, PrintPruna també:
+
+- Força `overflow: visible` a l'element, als seus descendents i als seus
+  ancestres (fins a `<body>`) que estiguessin clipant contingut.
+- Força `flex-wrap: wrap` als contenidors flex en una sola fila (típics de
+  carrusels amb botó de "següent"), perquè els elements es reorganitzin
+  dins l'espai nou en lloc de sobreposar-se a la resta de la pàgina.
+
+Tot això es desfà si es cancel·la l'arrossegament amb `Esc`; si es
+completa, els canvis es mantenen igual que la resta de mutacions de
+l'extensió.
 
 ### Sobre el bloqueig de `Ctrl+P`
 
@@ -67,10 +94,10 @@ utilitza l'opció "Imprimeix" del menú.
 
 ```
 manifest.json     Manifest V3, compartit entre Chrome i Firefox
-src/popup.html    Menú de la icona amb les opcions "Selecciona", "Elimina" i "Imprimeix"
+src/popup.html    Menú de la icona amb les opcions "Selecciona", "Elimina", "Redimensiona" i "Imprimeix"
 src/popup.js      Injecta el content script (si cal) i envia el mode triat
-src/content.js    Lògica de hover, selecció/eliminació de blocs
-src/content.css   Estils del ressaltat en hover i el cursor de marcatge
+src/content.js    Lògica de hover, selecció/eliminació/redimensionament de blocs
+src/content.css   Estils del ressaltat en hover, els cursors per mode i l'overlay d'arrossegament
 icons/            Icones de l'extensió (icon48.png, icon128.png)
 docs/logo.png     Logo en gran per al README / store listing
 ```
