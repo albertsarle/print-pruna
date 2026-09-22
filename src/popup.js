@@ -16,12 +16,20 @@ async function injectContentScript(tabId) {
 // encara que el cas comú (script ja injectat en una pàgina que ja s'havia
 // obert el popup) no en necessiti cap. En lloc d'això, provem d'enviar el
 // missatge directament: si no hi ha cap listener (pàgina encara no
-// injectada), sendMessage rebutja la promesa i és llavors quan injectem i
-// reintentem, un únic cop.
+// injectada), sendMessage rebutja la promesa amb "Could not establish
+// connection. Receiving end does not exist." i és llavors quan injectem i
+// reintentem, un únic cop. Un altre motiu de rebuig (p. ex. una pestanya
+// chrome:// on scripting.executeScript no és permès) no s'ha d'amagar
+// darrere d'un reintent inútil: deixem que l'error original es propagui.
+function isMissingReceiverError(error) {
+  return typeof error?.message === "string" && error.message.includes("Receiving end does not exist");
+}
+
 async function sendToContentScript(tabId, message) {
   try {
     await browser.tabs.sendMessage(tabId, message);
-  } catch {
+  } catch (error) {
+    if (!isMissingReceiverError(error)) throw error;
     await injectContentScript(tabId);
     await browser.tabs.sendMessage(tabId, message);
   }
