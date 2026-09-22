@@ -40,14 +40,14 @@ async function printPage() {
   if (!tab?.id) return;
 
   // Injectem el content script (si encara no hi és) perquè instal·li el
-  // "guard" del drecera Ctrl/Cmd+P; després cridem window.print() des del
-  // content script, que corre en un "isolated world" i per tant no es veu
-  // afectat si la pàgina ha sobreescrit window.print.
+  // "guard" del drecera Ctrl/Cmd+P; després li enviem un missatge perquè
+  // sigui ell qui cridi window.print(), ja que corre en un "isolated world"
+  // i per tant no es veu afectat si la pàgina ha sobreescrit window.print.
+  // Fer-ho via missatge (en lloc d'un executeScript separat) permet que el
+  // content script desactivi primer els CSS de `print` propis de la pàgina,
+  // perquè la impressió reflecteixi el que es veu a pantalla.
   await ensureInjected(tab.id);
-  await browser.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: () => window.print(),
-  });
+  await browser.tabs.sendMessage(tab.id, { type: "brx-print" });
   window.close();
 }
 

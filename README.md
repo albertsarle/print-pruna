@@ -27,7 +27,10 @@ actual per netejar-la abans d'imprimir-la a PDF.
      (`window.print()`), sense passar pel teclat. Útil en pàgines que
      bloquegen `Ctrl+P`/`Cmd+P` amb JavaScript, ja que aquesta crida es fa
      des del "isolated world" de l'extensió i no es veu afectada encara
-     que la pàgina hagi sobreescrit `window.print`.
+     que la pàgina hagi sobreescrit `window.print`. Abans d'obrir el
+     diàleg, desactiva els CSS de `@media print` propis de la pàgina (vegeu
+     més avall) perquè el resultat imprès s'assembli al que s'ha estat
+     editant a pantalla.
 2. Cada mode té un cursor propi per identificar-lo d'un cop d'ull: creueta
    per "Selecciona", `not-allowed` per "Elimina", i fletxes de
    redimensionar per "Redimensiona" (que canvien a `↕`/`↔` en apropar-se a
@@ -58,6 +61,31 @@ arrossegar una vora, PrintPruna també:
 Tot això es desfà si es cancel·la l'arrossegament amb `Esc`; si es
 completa, els canvis es mantenen igual que la resta de mutacions de
 l'extensió.
+
+### Ignorant els CSS de `print` de la pàgina
+
+Moltes pàgines defineixen el seu propi full d'estils de `print` (o blocs
+`@media print` dins d'un full normal) per canviar com es veu el contingut
+en imprimir-lo, i sovint aquest disseny no coincideix amb el que s'ha
+estat editant a pantalla amb "Selecciona"/"Elimina"/"Redimensiona". Per
+evitar aquesta discrepància, en prémer "Imprimeix" (o `Ctrl+P`/`Cmd+P`)
+l'extensió:
+
+- Desactiva temporalment qualsevol full d'estils o `<link>`/`<style>` amb
+  `media="print"`.
+- Neutralitza els blocs `@media print { ... }` dins de fulls d'estils que
+  no siguin ells mateixos `print`-only.
+- Restaura tot això automàticament quan es tanca el diàleg d'impressió
+  (event `afterprint`), tant si s'ha imprès com si s'ha cancel·lat.
+
+Com que això s'aplica de forma general, en algunes pàgines que facin
+servir el seu `@media print` per corregir problemes de renderitzat propis
+del motor d'impressió (per exemple, tècniques CSS com `mask-image` que
+alguns navegadors no dibuixen bé en generar el PDF) el resultat imprès pot
+perdre alguna d'aquestes correccions puntuals. És un compromís assumit
+conscientment: es prioritza que la impressió sigui fidel al que s'ha
+editat a pantalla per sobre d'ajustos de compatibilitat específics de
+cada web.
 
 ### Sobre el bloqueig de `Ctrl+P`
 

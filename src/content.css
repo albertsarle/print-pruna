@@ -42,3 +42,30 @@ html.brx-mode-resize body {
   z-index: 2147483647 !important;
   background: transparent !important;
 }
+
+/* Si la impressió es dispara sense haver sortit del mode de selecció/
+   redimensiona (p. ex. l'element sobre el qual estava el ratolí encara té
+   `brx-hover-highlight` o `brx-resize-edge-highlight`), aquests contorns
+   i cursors són ajudes visuals només per a pantalla i no han d'aparèixer
+   mai al document imprès. */
+@media print {
+  .brx-hover-highlight,
+  html.brx-mode-remove .brx-hover-highlight,
+  .brx-resize-edge-highlight {
+    outline: none !important;
+    background-color: transparent !important;
+  }
+
+  html.brx-picking,
+  html.brx-picking body,
+  html.brx-mode-remove,
+  html.brx-mode-remove body,
+  html.brx-mode-resize,
+  html.brx-mode-resize body {
+    cursor: auto !important;
+  }
+
+  #brx-resize-drag-overlay {
+    display: none !important;
+  }
+}
