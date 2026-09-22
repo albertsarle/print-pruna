@@ -1,28 +1,29 @@
 const browser = window.browser || window.chrome;
 
-async function isContentScriptInjected(tabId) {
-  try {
-    const [{ result }] = await browser.scripting.executeScript({
-      target: { tabId },
-      func: () => Boolean(window.__brxInjected),
-    });
-    return Boolean(result);
-  } catch {
-    return false;
-  }
+async function injectContentScript(tabId) {
+  await browser.scripting.insertCSS({
+    target: { tabId },
+    files: ["src/content.css"],
+  });
+  await browser.scripting.executeScript({
+    target: { tabId },
+    files: ["src/content.js"],
+  });
 }
 
-async function ensureInjected(tabId) {
-  const alreadyInjected = await isContentScriptInjected(tabId);
-  if (!alreadyInjected) {
-    await browser.scripting.insertCSS({
-      target: { tabId },
-      files: ["src/content.css"],
-    });
-    await browser.scripting.executeScript({
-      target: { tabId },
-      files: ["src/content.js"],
-    });
+// Comprovar si el content script ja hi és amb un executeScript de sondeig
+// abans de cada missatge costa un round-trip addicional a l'API scripting,
+// encara que el cas comú (script ja injectat en una pàgina que ja s'havia
+// obert el popup) no en necessiti cap. En lloc d'això, provem d'enviar el
+// missatge directament: si no hi ha cap listener (pàgina encara no
+// injectada), sendMessage rebutja la promesa i és llavors quan injectem i
+// reintentem, un únic cop.
+async function sendToContentScript(tabId, message) {
+  try {
+    await browser.tabs.sendMessage(tabId, message);
+  } catch {
+    await injectContentScript(tabId);
+    await browser.tabs.sendMessage(tabId, message);
   }
 }
 
@@ -30,8 +31,7 @@ async function startPicker(mode) {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
 
-  await ensureInjected(tab.id);
-  await browser.tabs.sendMessage(tab.id, { type: "brx-start-picker", mode });
+  await sendToContentScript(tab.id, { type: "brx-start-picker", mode });
   window.close();
 }
 
@@ -46,8 +46,7 @@ async function printPage() {
   // Fer-ho via missatge (en lloc d'un executeScript separat) permet que el
   // content script desactivi primer els CSS de `print` propis de la pàgina,
   // perquè la impressió reflecteixi el que es veu a pantalla.
-  await ensureInjected(tab.id);
-  await browser.tabs.sendMessage(tab.id, { type: "brx-print" });
+  await sendToContentScript(tab.id, { type: "brx-print" });
   window.close();
 }
 
@@ -55,8 +54,7 @@ async function removeAds() {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) return;
 
-  await ensureInjected(tab.id);
-  await browser.tabs.sendMessage(tab.id, { type: "brx-remove-ads" });
+  await sendToContentScript(tab.id, { type: "brx-remove-ads" });
   window.close();
 }
 
