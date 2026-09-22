@@ -24,6 +24,64 @@
     true,
   );
 
+  // Moltes pàgines tenen el seu propi full d'estils de `print` (o blocs
+  // `@media print` dins d'un full normal) pensat per a la seva pròpia
+  // maquetació, que sovint no coincideix amb el que l'usuari ha vist i
+  // editat a pantalla amb aquesta extensió. Els neutralitzem abans
+  // d'imprimir perquè el resultat imprès sigui fidel al que es veu al
+  // navegador, i els restaurem quan el diàleg d'impressió es tanca.
+  let printStyleOverrides = [];
+
+  function disablePrintStyles() {
+    printStyleOverrides = [];
+    for (const sheet of Array.from(document.styleSheets)) {
+      // content.css és el propi full d'estils de l'extensió (injectat via
+      // scripting.insertCSS): té les seves pròpies regles `@media print`
+      // per amagar marques visuals de picking/resize durant la impressió i
+      // no s'han de neutralitzar com si fossin de la pàgina.
+      if (sheet.href && sheet.href.includes("/src/content.css")) continue;
+
+      const ownerNode = sheet.ownerNode;
+      if (ownerNode && /\bprint\b/i.test(ownerNode.getAttribute("media") || "")) {
+        printStyleOverrides.push({ type: "media-attr", node: ownerNode, original: ownerNode.getAttribute("media") });
+        ownerNode.setAttribute("media", "not-all-brx-print-disabled");
+      }
+
+      let rules;
+      try {
+        rules = sheet.cssRules;
+      } catch {
+        continue; // full d'estils cross-origin sense CORS: no s'hi pot accedir
+      }
+      if (!rules) continue;
+
+      for (const rule of Array.from(rules)) {
+        if (rule instanceof CSSMediaRule && /\bprint\b/i.test(rule.media.mediaText)) {
+          printStyleOverrides.push({ type: "media-rule", media: rule.media, original: rule.media.mediaText });
+          rule.media.mediaText = "not all";
+        }
+      }
+    }
+  }
+
+  function restorePrintStyles() {
+    for (const override of printStyleOverrides) {
+      if (override.type === "media-attr") {
+        override.node.setAttribute("media", override.original);
+      } else {
+        override.media.mediaText = override.original;
+      }
+    }
+    printStyleOverrides = [];
+  }
+
+  window.addEventListener("afterprint", restorePrintStyles);
+
+  function brxPrintWithoutPrintStyles() {
+    disablePrintStyles();
+    window.print();
+  }
+
   let picking = false;
   let mode = "select";
   let currentHoverEl = null;
@@ -466,6 +524,8 @@
       if (picking) stopPicking();
       const nextMode = message.mode === "remove" ? "remove" : message.mode === "resize" ? "resize" : "select";
       startPicking(nextMode);
+    } else if (message?.type === "brx-print") {
+      brxPrintWithoutPrintStyles();
     }
   });
 })();
