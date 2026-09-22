@@ -53,4 +53,5 @@ async function printPage() {
 
 document.getElementById("brx-select").addEventListener("click", () => startPicker("select"));
 document.getElementById("brx-remove").addEventListener("click", () => startPicker("remove"));
+document.getElementById("brx-resize").addEventListener("click", () => startPicker("resize"));
 document.getElementById("brx-print").addEventListener("click", printPage);
