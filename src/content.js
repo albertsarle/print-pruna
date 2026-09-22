@@ -258,6 +258,30 @@
   // renderitza per sobre/darrere de la resta de la pàgina en lloc
   // d'aprofitar l'espai nou. Forcem flex-wrap:wrap perquè el contingut
   // flueixi dins de l'espai disponible.
+  // El clipping real d'un carrusel/scroller sol venir del propi contenidor
+  // o d'un fill directe seu, no de nets molt profunds. Baixar amb
+  // `querySelectorAll("*")" per TOT el subarbre (que pot ser molt gran si
+  // `el` és un bloc de contingut ampli) força un getComputedStyle per
+  // node sense necessitat real. Limitem la baixada a uns quants nivells:
+  // manté la detecció dels casos habituals a un cost molt més baix.
+  const FORCE_VISIBLE_MAX_DEPTH = 6;
+
+  function collectDescendantsWithinDepth(el, maxDepth) {
+    const result = [];
+    let currentLevel = [el];
+    for (let depth = 0; depth < maxDepth && currentLevel.length > 0; depth++) {
+      const nextLevel = [];
+      for (const node of currentLevel) {
+        for (const child of node.children) {
+          result.push(child);
+          nextLevel.push(child);
+        }
+      }
+      currentLevel = nextLevel;
+    }
+    return result;
+  }
+
   function forceVisibleOverflow(el) {
     const ancestors = [];
     let ancestor = el.parentElement;
@@ -266,7 +290,7 @@
       ancestor = ancestor.parentElement;
     }
 
-    const candidates = [...ancestors, el, ...el.querySelectorAll("*")];
+    const candidates = [...ancestors, el, ...collectDescendantsWithinDepth(el, FORCE_VISIBLE_MAX_DEPTH)];
 
     // Fem primer una passada de només lectura (getComputedStyle) per a tots
     // els candidats, i apliquem els canvis (setProperty) en una segona
