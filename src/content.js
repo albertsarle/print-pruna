@@ -434,6 +434,88 @@
     el.style.setProperty("display", "none", "important");
   }
 
+  // Heurístiques per detectar banners/blocs publicitaris habituals: noms de
+  // classe/id que contenen paraules típiques de publicitat (com a paraula
+  // sencera, per evitar falsos positius com "address" o "gradient"), més
+  // iframes/scripts carregats des de xarxes publicitàries conegudes.
+  const AD_WORD_PATTERN = /\b(ads?|advert(isement)?s?|sponsor(ed)?|banner-?ad|adsbygoogle|dfp-ad|ad-slot|ad-container|ad-wrapper|ad-unit)\b/i;
+  // Ids/classes del tipus "..._ad" o "..._ad_refresh" (guió baix com a
+  // separador, típic de slots publicitaris generats dinàmicament, p. ex.
+  // pub-cc-globalTop_ad) que \bad\b no detecta perquè "_" és un caràcter de
+  // paraula i per tant no marca un límit.
+  const AD_SUFFIX_PATTERN = /(^|[-_])ads?([-_]|$)/i;
+  const AD_NETWORK_HOST_PATTERN =
+    /(doubleclick\.net|googlesyndication\.com|googleadservices\.com|adservice\.google\.|taboola\.com|outbrain\.com|amazon-adsystem\.com|media\.net|adnxs\.com|criteo\.com|pubmatic\.com|rubiconproject\.com)/i;
+
+  // Un veritable bloc publicitari és petit i autònom. Molts llocs (com
+  // cifraclub.com) fan servir noms com "ads-curtain-anchor" o
+  // "js-ads-main-container" per a un contenidor que embolcalla TOT el
+  // contingut real de la pàgina (és només el punt d'ancoratge visual d'un
+  // possible overlay publicitari, no l'anunci en si). Sense aquest límit de
+  // mida, la coincidència del nom faria desaparèixer la pàgina sencera.
+  const AD_MAX_TEXT_LENGTH = 500;
+  const AD_MAX_DESCENDANTS = 60;
+
+  function isAdSized(el) {
+    if (el.querySelectorAll("*").length > AD_MAX_DESCENDANTS) return false;
+    if ((el.textContent || "").trim().length > AD_MAX_TEXT_LENGTH) return false;
+    return true;
+  }
+
+  function looksLikeAd(el) {
+    if (!(el instanceof Element)) return false;
+    if (el === document.documentElement || el === document.body) return false;
+
+    if (el.tagName === "IFRAME" || el.tagName === "SCRIPT") {
+      const src = el.getAttribute("src") || "";
+      if (AD_NETWORK_HOST_PATTERN.test(src)) return true;
+    }
+
+    const id = el.id || "";
+    const className = typeof el.className === "string" ? el.className : "";
+    const matchesAdName =
+      AD_WORD_PATTERN.test(id) || AD_WORD_PATTERN.test(className) || AD_SUFFIX_PATTERN.test(id) || AD_SUFFIX_PATTERN.test(className);
+    if (matchesAdName) return isAdSized(el);
+
+    return false;
+  }
+
+  // Un cop amagat un anunci, sovint queda un contenidor pare (amb padding,
+  // min-height o un "gap" de flex/grid) que no coincidia amb cap heurística
+  // però que ara no conté res visible: és el buit que es veu a la pàgina.
+  // Pugem per la cadena d'ancestres amagant-los també mentre no quedi cap
+  // altre fill visible ni text propi, per fer desaparèixer l'espai reservat.
+  function hasOwnText(el) {
+    for (const node of el.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0) return true;
+    }
+    return false;
+  }
+
+  function collapseEmptyAncestors(el) {
+    let parent = el.parentElement;
+    while (parent && parent !== document.body && parent !== document.documentElement) {
+      const hasVisibleChild = Array.from(parent.children).some((child) => getComputedStyle(child).display !== "none");
+      if (hasVisibleChild || hasOwnText(parent)) break;
+      removeBlock(parent);
+      parent = parent.parentElement;
+    }
+  }
+
+  function removeAds() {
+    const candidates = document.body ? document.body.querySelectorAll("*") : [];
+    let hiddenCount = 0;
+    for (const el of candidates) {
+      if (getComputedStyle(el).display === "none") continue;
+      if (looksLikeAd(el)) {
+        removeBlock(el);
+        collapseEmptyAncestors(el);
+        hiddenCount++;
+      }
+    }
+    return hiddenCount;
+  }
+
   function selectBlock(selectedEl) {
     // Build the ancestor chain from <body> down to the selected element.
     const chain = [];
@@ -526,6 +608,8 @@
       startPicking(nextMode);
     } else if (message?.type === "brx-print") {
       brxPrintWithoutPrintStyles();
+    } else if (message?.type === "brx-remove-ads") {
+      removeAds();
     }
   });
 })();

@@ -10,7 +10,7 @@ actual per netejar-la abans d'imprimir-la a PDF.
 ## Ús
 
 1. Fes clic a la icona de l'extensió a la barra d'eines. S'obre un petit
-   menú amb quatre opcions:
+   menú amb cinc opcions:
    - **Selecciona**: marca el bloc que vulguis conservar; la resta de la
      pàgina s'amaga. El bloc seleccionat es reajusta (~90% d'ample,
      centrat) perquè no perdi llegibilitat si depenia d'un layout
@@ -23,6 +23,12 @@ actual per netejar-la abans d'imprimir-la a PDF.
      visualment el cursor (en lloc de créixer sempre cap a l'altre costat).
      El mode es manté actiu perquè es puguin ajustar diversos blocs seguits
      sense reobrir el menú.
+   - **Elimina Publicitat**: escaneja tota la pàgina en un sol pas i amaga
+     automàticament els blocs que semblin anuncis o banners publicitaris
+     (per id/classe amb paraules com `ad`, `ads`, `sponsor`, `banner-ad`,
+     etc., o iframes/scripts de xarxes publicitàries conegudes com
+     Google Ads, Taboola o Outbrain). No cal seleccionar res manualment; si
+     algun anunci no es detecta, es pot eliminar amb "Elimina".
    - **Imprimeix**: obre el diàleg d'impressió del navegador directament
      (`window.print()`), sense passar pel teclat. Útil en pàgines que
      bloquegen `Ctrl+P`/`Cmd+P` amb JavaScript, ja que aquesta crida es fa
@@ -122,9 +128,9 @@ utilitza l'opció "Imprimeix" del menú.
 
 ```
 manifest.json     Manifest V3, compartit entre Chrome i Firefox
-src/popup.html    Menú de la icona amb les opcions "Selecciona", "Elimina", "Redimensiona" i "Imprimeix"
+src/popup.html    Menú de la icona amb les opcions "Selecciona", "Elimina", "Redimensiona", "Elimina Publicitat" i "Imprimeix"
 src/popup.js      Injecta el content script (si cal) i envia el mode triat
-src/content.js    Lògica de hover, selecció/eliminació/redimensionament de blocs
+src/content.js    Lògica de hover, selecció/eliminació/redimensionament de blocs i escaneig heurístic de publicitat
 src/content.css   Estils del ressaltat en hover, els cursors per mode i l'overlay d'arrossegament
 icons/            Icones de l'extensió (icon48.png, icon128.png)
 docs/logo.png     Logo en gran per al README / store listing
