@@ -199,8 +199,26 @@
     setResizeCursor(null);
   }
 
-  function onResizeMouseMove(event) {
-    if (resizeState) return;
+  function cancelPendingResizeMouseMove() {
+    if (resizeMoveRafId !== null) {
+      cancelAnimationFrame(resizeMoveRafId);
+      resizeMoveRafId = null;
+    }
+    pendingResizeMoveEvent = null;
+  }
+
+  // elementFromPoint() fa un hit-test complet del DOM: cridar-lo a cada
+  // "mousemove" (que pot disparar-se desenes de cops per segon) és car en
+  // pàgines amb molts nodes. Guardem només l'última posició coneguda i
+  // processem com a màxim un cop per frame amb requestAnimationFrame.
+  let pendingResizeMoveEvent = null;
+  let resizeMoveRafId = null;
+
+  function processResizeMouseMove() {
+    resizeMoveRafId = null;
+    const event = pendingResizeMoveEvent;
+    pendingResizeMoveEvent = null;
+    if (!event || resizeState) return;
 
     const target = document.elementFromPoint(event.clientX, event.clientY);
     const edge = detectEdge(target, event.clientX, event.clientY);
@@ -219,6 +237,14 @@
     setResizeCursor(isHorizontalEdge(edge) ? "ns-resize" : "ew-resize");
   }
 
+  function onResizeMouseMove(event) {
+    if (resizeState) return;
+    pendingResizeMoveEvent = event;
+    if (resizeMoveRafId === null) {
+      resizeMoveRafId = requestAnimationFrame(processResizeMouseMove);
+    }
+  }
+
   // Un bloc redimensionat sovint conté contenidors amb overflow:hidden/auto
   // pensats per a una mida fixa (carrusels, scrollers horitzontals, etc.).
   // Si no els obrim, el contingut queda retallat encara que el bloc creixi.
@@ -232,6 +258,30 @@
   // renderitza per sobre/darrere de la resta de la pàgina en lloc
   // d'aprofitar l'espai nou. Forcem flex-wrap:wrap perquè el contingut
   // flueixi dins de l'espai disponible.
+  // El clipping real d'un carrusel/scroller sol venir del propi contenidor
+  // o d'un fill directe seu, no de nets molt profunds. Baixar amb
+  // `querySelectorAll("*")" per TOT el subarbre (que pot ser molt gran si
+  // `el` és un bloc de contingut ampli) força un getComputedStyle per
+  // node sense necessitat real. Limitem la baixada a uns quants nivells:
+  // manté la detecció dels casos habituals a un cost molt més baix.
+  const FORCE_VISIBLE_MAX_DEPTH = 6;
+
+  function collectDescendantsWithinDepth(el, maxDepth) {
+    const result = [];
+    let currentLevel = [el];
+    for (let depth = 0; depth < maxDepth && currentLevel.length > 0; depth++) {
+      const nextLevel = [];
+      for (const node of currentLevel) {
+        for (const child of node.children) {
+          result.push(child);
+          nextLevel.push(child);
+        }
+      }
+      currentLevel = nextLevel;
+    }
+    return result;
+  }
+
   function forceVisibleOverflow(el) {
     const ancestors = [];
     let ancestor = el.parentElement;
@@ -240,14 +290,25 @@
       ancestor = ancestor.parentElement;
     }
 
-    const candidates = [...ancestors, el, ...el.querySelectorAll("*")];
-    const overrides = [];
+    const candidates = [...ancestors, el, ...collectDescendantsWithinDepth(el, FORCE_VISIBLE_MAX_DEPTH)];
+
+    // Fem primer una passada de només lectura (getComputedStyle) per a tots
+    // els candidats, i apliquem els canvis (setProperty) en una segona
+    // passada. Si llegíssim i escrivíssim node a node, cada escriptura
+    // invalidaria l'estil i forçaria un recàlcul síncron abans de la
+    // següent lectura ("layout thrashing"), que és especialment costós quan
+    // `el` té molts descendents.
+    const toOverride = [];
     for (const node of candidates) {
       const s = getComputedStyle(node);
       const clipsOverflow = s.overflow !== "visible" || s.overflowX !== "visible" || s.overflowY !== "visible";
       const needsWrap = /flex/.test(s.display) && s.flexWrap === "nowrap";
       if (!clipsOverflow && !needsWrap) continue;
+      toOverride.push({ node, clipsOverflow, needsWrap });
+    }
 
+    const overrides = [];
+    for (const { node, clipsOverflow, needsWrap } of toOverride) {
       overrides.push({
         node,
         overflow: node.style.getPropertyValue("overflow"),
@@ -492,10 +553,22 @@
     return false;
   }
 
+  // getComputedStyle() força un recalcul d'estils i és car de cridar per a
+  // cada element d'una pàgina gran. `offsetParent` és una propietat molt més
+  // barata que ja és `null` sempre que l'element (o un ancestre) té
+  // `display:none`. Només és ambigu per a elements `position:fixed` (o
+  // `<body>`/`<html>`), on també val `null` encara que siguin visibles; en
+  // aquest cas concret, i només en aquest, recorrem a getComputedStyle.
+  function isHidden(el) {
+    if (el.offsetParent !== null) return false;
+    if (el === document.body || el === document.documentElement) return false;
+    return getComputedStyle(el).display === "none";
+  }
+
   function collapseEmptyAncestors(el) {
     let parent = el.parentElement;
     while (parent && parent !== document.body && parent !== document.documentElement) {
-      const hasVisibleChild = Array.from(parent.children).some((child) => getComputedStyle(child).display !== "none");
+      const hasVisibleChild = Array.from(parent.children).some((child) => !isHidden(child));
       if (hasVisibleChild || hasOwnText(parent)) break;
       removeBlock(parent);
       parent = parent.parentElement;
@@ -506,7 +579,7 @@
     const candidates = document.body ? document.body.querySelectorAll("*") : [];
     let hiddenCount = 0;
     for (const el of candidates) {
-      if (getComputedStyle(el).display === "none") continue;
+      if (isHidden(el)) continue;
       if (looksLikeAd(el)) {
         removeBlock(el);
         collapseEmptyAncestors(el);
@@ -592,6 +665,7 @@
       currentHoverEl = null;
     }
     if (resizeState) cancelResizeDrag();
+    cancelPendingResizeMouseMove();
     clearEdgeHighlight();
     document.removeEventListener("mouseover", onMouseOver, true);
     document.removeEventListener("mouseout", onMouseOut, true);
