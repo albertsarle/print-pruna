@@ -199,8 +199,26 @@
     setResizeCursor(null);
   }
 
-  function onResizeMouseMove(event) {
-    if (resizeState) return;
+  function cancelPendingResizeMouseMove() {
+    if (resizeMoveRafId !== null) {
+      cancelAnimationFrame(resizeMoveRafId);
+      resizeMoveRafId = null;
+    }
+    pendingResizeMoveEvent = null;
+  }
+
+  // elementFromPoint() fa un hit-test complet del DOM: cridar-lo a cada
+  // "mousemove" (que pot disparar-se desenes de cops per segon) és car en
+  // pàgines amb molts nodes. Guardem només l'última posició coneguda i
+  // processem com a màxim un cop per frame amb requestAnimationFrame.
+  let pendingResizeMoveEvent = null;
+  let resizeMoveRafId = null;
+
+  function processResizeMouseMove() {
+    resizeMoveRafId = null;
+    const event = pendingResizeMoveEvent;
+    pendingResizeMoveEvent = null;
+    if (!event || resizeState) return;
 
     const target = document.elementFromPoint(event.clientX, event.clientY);
     const edge = detectEdge(target, event.clientX, event.clientY);
@@ -217,6 +235,14 @@
     activeEdge = edge;
     edgeHoverEl.classList.add("brx-resize-edge-highlight");
     setResizeCursor(isHorizontalEdge(edge) ? "ns-resize" : "ew-resize");
+  }
+
+  function onResizeMouseMove(event) {
+    if (resizeState) return;
+    pendingResizeMoveEvent = event;
+    if (resizeMoveRafId === null) {
+      resizeMoveRafId = requestAnimationFrame(processResizeMouseMove);
+    }
   }
 
   // Un bloc redimensionat sovint conté contenidors amb overflow:hidden/auto
@@ -592,6 +618,7 @@
       currentHoverEl = null;
     }
     if (resizeState) cancelResizeDrag();
+    cancelPendingResizeMouseMove();
     clearEdgeHighlight();
     document.removeEventListener("mouseover", onMouseOver, true);
     document.removeEventListener("mouseout", onMouseOut, true);
