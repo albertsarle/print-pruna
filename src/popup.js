@@ -1,5 +1,16 @@
 const browser = window.browser || window.chrome;
 
+// El HTML no admet `__MSG_...__` (només `manifest.json` ho substitueix
+// automàticament), així que omplim els textos traduïbles a mà a l'arrencada
+// del popup segons l'idioma del navegador (`chrome.i18n` tria el missatge
+// disponible més proper a la configuració de l'usuari, amb el `default_locale`
+// del manifest com a últim recurs).
+document.documentElement.lang = browser.i18n.getUILanguage();
+for (const el of document.querySelectorAll("[data-i18n]")) {
+  const message = browser.i18n.getMessage(el.dataset.i18n);
+  if (message) el.textContent = message;
+}
+
 async function injectContentScript(tabId) {
   await browser.scripting.insertCSS({
     target: { tabId },

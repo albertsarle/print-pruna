@@ -1,0 +1,38 @@
+{
+  "extName": {
+    "message": "PrintPruna"
+  },
+  "extDescription": {
+    "message": "Select, remove, or crop blocks of a page before printing it to PDF."
+  },
+  "popupSelectTitle": {
+    "message": "Select"
+  },
+  "popupSelectDesc": {
+    "message": "Mark a block and hide the rest"
+  },
+  "popupRemoveTitle": {
+    "message": "Remove"
+  },
+  "popupRemoveDesc": {
+    "message": "Mark a block and remove it"
+  },
+  "popupResizeTitle": {
+    "message": "Resize"
+  },
+  "popupResizeDesc": {
+    "message": "Drag a block's edge to change its size"
+  },
+  "popupRemoveAdsTitle": {
+    "message": "Remove Ads"
+  },
+  "popupRemoveAdsDesc": {
+    "message": "Automatically detect and hide banners"
+  },
+  "popupPrintTitle": {
+    "message": "Print"
+  },
+  "popupPrintDesc": {
+    "message": "Open the print dialog"
+  }
+}
