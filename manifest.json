@@ -1,13 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "PrintPruna",
+  "name": "__MSG_extName__",
   "version": "1.0.0",
-  "description": "Selecciona, elimina o retalla blocs d'una pàgina abans d'imprimir-la a PDF.",
+  "description": "__MSG_extDescription__",
+  "default_locale": "ca",
   "author": "albertsarle <albertsarle@gmail.com>",
   "homepage_url": "https://github.com/albertsarle/print-pruna",
   "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["<all_urls>"],
   "action": {
-    "default_title": "PrintPruna",
+    "default_title": "__MSG_extName__",
     "default_popup": "src/popup.html",
     "default_icon": {
       "48": "icons/icon48.png",

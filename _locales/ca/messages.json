@@ -1,0 +1,38 @@
+{
+  "extName": {
+    "message": "PrintPruna"
+  },
+  "extDescription": {
+    "message": "Selecciona, elimina o retalla blocs d'una pàgina abans d'imprimir-la a PDF."
+  },
+  "popupSelectTitle": {
+    "message": "Selecciona"
+  },
+  "popupSelectDesc": {
+    "message": "Marca un bloc i amaga la resta"
+  },
+  "popupRemoveTitle": {
+    "message": "Elimina"
+  },
+  "popupRemoveDesc": {
+    "message": "Marca un bloc i elimina'l"
+  },
+  "popupResizeTitle": {
+    "message": "Redimensiona"
+  },
+  "popupResizeDesc": {
+    "message": "Arrossega la vora d'un bloc per canviar-ne la mida"
+  },
+  "popupRemoveAdsTitle": {
+    "message": "Elimina Publicitat"
+  },
+  "popupRemoveAdsDesc": {
+    "message": "Detecta i amaga banners automàticament"
+  },
+  "popupPrintTitle": {
+    "message": "Imprimeix"
+  },
+  "popupPrintDesc": {
+    "message": "Obre el diàleg d'impressió"
+  }
+}

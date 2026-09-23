@@ -1,0 +1,38 @@
+{
+  "extName": {
+    "message": "PrintPruna"
+  },
+  "extDescription": {
+    "message": "Selecciona, elimina o recorta bloques de una página antes de imprimirla a PDF."
+  },
+  "popupSelectTitle": {
+    "message": "Seleccionar"
+  },
+  "popupSelectDesc": {
+    "message": "Marca un bloque y oculta el resto"
+  },
+  "popupRemoveTitle": {
+    "message": "Eliminar"
+  },
+  "popupRemoveDesc": {
+    "message": "Marca un bloque y elimínalo"
+  },
+  "popupResizeTitle": {
+    "message": "Redimensionar"
+  },
+  "popupResizeDesc": {
+    "message": "Arrastra el borde de un bloque para cambiar su tamaño"
+  },
+  "popupRemoveAdsTitle": {
+    "message": "Eliminar publicidad"
+  },
+  "popupRemoveAdsDesc": {
+    "message": "Detecta y oculta banners automáticamente"
+  },
+  "popupPrintTitle": {
+    "message": "Imprimir"
+  },
+  "popupPrintDesc": {
+    "message": "Abre el diálogo de impresión"
+  }
+}

@@ -19,3 +19,4 @@ web-ext-artifacts/
 
 # Dependències (si mai s'afegeix tooling amb npm)
 node_modules/
+/screenshots/

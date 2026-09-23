@@ -1,13 +1,29 @@
 const browser = window.browser || window.chrome;
 
+// El HTML no admet `__MSG_...__` (només `manifest.json` ho substitueix
+// automàticament), així que omplim els textos traduïbles a mà a l'arrencada
+// del popup segons l'idioma del navegador (`chrome.i18n` tria el missatge
+// disponible més proper a la configuració de l'usuari, amb el `default_locale`
+// del manifest com a últim recurs).
+document.documentElement.lang = browser.i18n.getUILanguage();
+for (const el of document.querySelectorAll("[data-i18n]")) {
+  const message = browser.i18n.getMessage(el.dataset.i18n);
+  if (message) el.textContent = message;
+}
+
+// Els paths de `files` han de portar barra inicial ("/..."). Chrome els
+// resol igual amb o sense barra (relatius a l'arrel de l'extensió), però
+// a Firefox un path sense barra inicial (p. ex. "src/content.css") falla
+// silenciosament amb un error genèric ("An unexpected error occurred"),
+// sense cap detall que ho delati.
 async function injectContentScript(tabId) {
   await browser.scripting.insertCSS({
     target: { tabId },
-    files: ["src/content.css"],
+    files: ["/src/content.css"],
   });
   await browser.scripting.executeScript({
     target: { tabId },
-    files: ["src/content.js"],
+    files: ["/src/content.js"],
   });
 }
 
@@ -66,8 +82,22 @@ async function removeAds() {
   window.close();
 }
 
-document.getElementById("brx-select").addEventListener("click", () => startPicker("select"));
-document.getElementById("brx-remove").addEventListener("click", () => startPicker("remove"));
-document.getElementById("brx-resize").addEventListener("click", () => startPicker("resize"));
-document.getElementById("brx-remove-ads").addEventListener("click", removeAds);
-document.getElementById("brx-print").addEventListener("click", printPage);
+// Els listeners no poden ser `async` directament: si la promesa que retorna
+// startPicker/printPage/removeAds es rebutja (p. ex. perquè scripting.insertCSS
+// o tabs.sendMessage fallen), el rebuig queda "unhandled" i no es veu enlloc.
+// Resultat: el popup es queda obert i el clic sembla no fer res, sense cap
+// pista de l'error real a la consola de l'usuari. Capturem l'error i el
+// mostrem explícitament perquè almenys quedi registrat.
+function handleClick(action) {
+  return () => {
+    action().catch((error) => {
+      console.error("[PrintPruna]", error);
+    });
+  };
+}
+
+document.getElementById("brx-select").addEventListener("click", handleClick(() => startPicker("select")));
+document.getElementById("brx-remove").addEventListener("click", handleClick(() => startPicker("remove")));
+document.getElementById("brx-resize").addEventListener("click", handleClick(() => startPicker("resize")));
+document.getElementById("brx-remove-ads").addEventListener("click", handleClick(removeAds));
+document.getElementById("brx-print").addEventListener("click", handleClick(printPage));
