@@ -2,7 +2,16 @@
   if (window.__brxInjected) return;
   window.__brxInjected = true;
 
-  const browser = window.browser || window.chrome;
+  // A Firefox, un script injectat dinàmicament amb `scripting.executeScript`
+  // s'executa en un "isolated world" on l'API de l'extensió s'exposa com a
+  // variable global `browser`, però NO com a propietat `window.browser` (a
+  // diferència del popup, on sí que hi és). Cal referenciar l'identificador
+  // global `browser` directament (no `window.browser`); el nom de la
+  // constant local no pot ser també `browser`, perquè aleshores la pròpia
+  // declaració taparia (per "temporal dead zone") l'identificador global
+  // que volem llegir just a la dreta del `=`.
+  // eslint-disable-next-line no-undef
+  const extApi = typeof browser !== "undefined" ? browser : window.chrome;
 
   // Algunes pàgines capturen Ctrl/Cmd+P amb un listener de "keydown" a
   // document (o body) i fan preventDefault() per mostrar el seu propi
@@ -861,7 +870,7 @@
     document.removeEventListener("keydown", onKeyDown, true);
   }
 
-  browser.runtime.onMessage.addListener((message) => {
+  extApi.runtime.onMessage.addListener((message) => {
     if (message?.type === "brx-start-picker") {
       if (picking) stopPicking();
       const nextMode = message.mode === "remove" ? "remove" : message.mode === "resize" ? "resize" : "select";

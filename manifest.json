@@ -7,6 +7,7 @@
   "author": "albertsarle <albertsarle@gmail.com>",
   "homepage_url": "https://github.com/albertsarle/print-pruna",
   "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["<all_urls>"],
   "action": {
     "default_title": "__MSG_extName__",
     "default_popup": "src/popup.html",
