@@ -7,6 +7,14 @@
 Extensió per a Chrome i Firefox que permet marcar blocs HTML de la pàgina
 actual per netejar-la abans d'imprimir-la a PDF.
 
+El propòsit inicial d'aquest projecte era netejar pàgines d'acords i
+partitures de guitarra (cifraclub.com i similars) abans de generar-ne un
+PDF per imprimir — per això hi ha alguns ajustos pensats específicament per
+a aquest tipus de webs (per exemple, com es gestionen els `overflow` i els
+CSS de `print` propis d'aquests llocs). Dit això, en general l'extensió és
+útil a qualsevol pàgina web on vulguis eliminar anuncis, menús o altre
+contingut sobrant abans d'imprimir.
+
 ## Ús
 
 1. Fes clic a la icona de l'extensió a la barra d'eines. S'obre un petit
@@ -105,6 +113,12 @@ navegador faci la seva acció per defecte. És una mitigació "best effort":
 si la pàgina enganxa el seu listener directament a `window` abans que
 s'injecti l'extensió, aquest mètode no el pot superar — en aquest cas,
 utilitza l'opció "Imprimeix" del menú.
+
+## Privacitat
+
+PrintPruna no recull ni transmet cap dada: tot el processament es fa
+localment, dins del navegador. Vegeu la [política de privacitat](docs/PRIVACY.md)
+completa.
 
 ## Instal·lació en mode desenvolupador
 
