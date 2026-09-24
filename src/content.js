@@ -204,7 +204,15 @@
   const printMediaQuery = window.matchMedia("print");
   printMediaQuery.addEventListener("change", (event) => {
     if (event.matches) forcePrintVisibilityFixes();
-    else restorePrintVisibilityFixes();
+    else {
+      restorePrintVisibilityFixes();
+      // brxPrintWithoutPrintStyles() pot haver desactivat els `@media print`
+      // de la pàgina abans que `window.print()` obri el diàleg real, que és
+      // qui dispara `afterprint`. Si l'usuari commuta l'emulació de DevTools
+      // en lloc d'imprimir de veritat, aquest listener és l'única manera de
+      // restaurar-los.
+      restorePrintStyles();
+    }
   });
 
   // cifraclub.com és un cas on desactivar tot el `@media print` de la pàgina
