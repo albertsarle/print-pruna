@@ -53,7 +53,14 @@ contingut sobrant abans d'imprimir.
    "Elimina", taronja discontinu per la vora activa a "Redimensiona"). Fes
    clic (o arrossega, en el cas de "Redimensiona") sobre l'element desitjat
    per aplicar l'acció.
-3. Per tornar a l'estat original, recarrega la pàgina (F5).
+3. Desfés i Refés:
+   - Prem `Ctrl+Z` (o `Cmd+Z` a macOS) per desfer l'última acció
+     (remove, select o resize). Es pot fer servir múltiples vegades per anar
+     enrere a través de l'historial (fins a 50 accions enrere).
+   - Prem `Ctrl+Y` (o `Cmd+Y` a macOS) per refer-la, o `Ctrl+Shift+Z`
+     (`Cmd+Shift+Z` a macOS) en navegadors que ho suportin.
+   - L'historial es perd en recarregar la pàgina.
+4. Per tornar a l'estat original completament, recarrega la pàgina (F5).
 
 Prem `Esc` en qualsevol moment per sortir del mode de marcatge —o
 cancel·lar un arrossegament en curs a "Redimensiona"— sense fer cap canvi.
