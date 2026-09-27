@@ -33,6 +33,31 @@
     true,
   );
 
+  window.addEventListener(
+    "keydown",
+    (event) => {
+      const ctrlOrCmd = event.ctrlKey || event.metaKey;
+      if (!ctrlOrCmd) return;
+      const key = event.key.toLowerCase();
+      if (key === "z" && !event.shiftKey) {
+        if (undoStack.length === 0) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const entry = undoStack.pop();
+        entry.undo();
+        redoStack.push(entry);
+      } else if (key === "y" || (key === "z" && event.shiftKey)) {
+        if (redoStack.length === 0) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const entry = redoStack.pop();
+        entry.redo();
+        undoStack.push(entry);
+      }
+    },
+    true,
+  );
+
   // Moltes pàgines tenen el seu propi full d'estils de `print` (o blocs
   // `@media print` dins d'un full normal) pensat per a la seva pròpia
   // maquetació, que sovint no coincideix amb el que l'usuari ha vist i
@@ -295,6 +320,16 @@
   const RESIZE_EDGE_THRESHOLD = 6; // px
   const RESIZE_MIN_SIZE = 20; // px
 
+  let undoStack = [];
+  let redoStack = [];
+  const MAX_HISTORY = 50;
+
+  function pushHistory(entry) {
+    undoStack.push(entry);
+    if (undoStack.length > MAX_HISTORY) undoStack.shift();
+    redoStack = [];
+  }
+
   function onMouseOver(event) {
     if (currentHoverEl) {
       currentHoverEl.classList.remove("brx-hover-highlight");
@@ -314,7 +349,7 @@
     event.preventDefault();
     event.stopPropagation();
     if (mode === "remove") {
-      removeBlock(event.target);
+      removeBlockTracked(event.target);
     } else {
       selectBlock(event.target);
     }
@@ -635,6 +670,82 @@
   }
 
   function endResizeDrag() {
+    if (resizeState) {
+      const {
+        el,
+        originalWidth,
+        originalHeight,
+        originalBoxSizing,
+        originalFlex,
+        originalPosition,
+        originalTop,
+        originalLeft,
+        originalMarginBottom,
+        originalMarginRight,
+        overflowOverrides,
+      } = resizeState;
+
+      const currentWidth = el.style.getPropertyValue("width");
+      const currentHeight = el.style.getPropertyValue("height");
+
+      if (currentWidth !== originalWidth || currentHeight !== originalHeight) {
+        const finalWidth = currentWidth;
+        const finalHeight = currentHeight;
+        const finalBoxSizing = el.style.getPropertyValue("box-sizing");
+        const finalFlex = el.style.getPropertyValue("flex");
+        const finalPosition = el.style.getPropertyValue("position");
+        const finalTop = el.style.getPropertyValue("top");
+        const finalLeft = el.style.getPropertyValue("left");
+        const finalMarginBottom = el.style.getPropertyValue("margin-bottom");
+        const finalMarginRight = el.style.getPropertyValue("margin-right");
+
+        pushHistory({
+          undo: () => {
+            restoreResizeStyles(el, {
+              originalWidth,
+              originalHeight,
+              originalBoxSizing,
+              originalFlex,
+              originalPosition,
+              originalTop,
+              originalLeft,
+              originalMarginBottom,
+              originalMarginRight,
+            });
+            restoreOverflow(overflowOverrides);
+          },
+          redo: () => {
+            if (finalWidth) el.style.setProperty("width", finalWidth, "important");
+            else el.style.removeProperty("width");
+
+            if (finalHeight) el.style.setProperty("height", finalHeight, "important");
+            else el.style.removeProperty("height");
+
+            if (finalBoxSizing) el.style.setProperty("box-sizing", finalBoxSizing, "important");
+            else el.style.removeProperty("box-sizing");
+
+            if (finalFlex) el.style.setProperty("flex", finalFlex, "important");
+            else el.style.removeProperty("flex");
+
+            if (finalPosition) el.style.setProperty("position", finalPosition, "important");
+            else el.style.removeProperty("position");
+
+            if (finalTop) el.style.setProperty("top", finalTop, "important");
+            else el.style.removeProperty("top");
+
+            if (finalLeft) el.style.setProperty("left", finalLeft, "important");
+            else el.style.removeProperty("left");
+
+            if (finalMarginBottom) el.style.setProperty("margin-bottom", finalMarginBottom, "important");
+            else el.style.removeProperty("margin-bottom");
+
+            if (finalMarginRight) el.style.setProperty("margin-right", finalMarginRight, "important");
+            else el.style.removeProperty("margin-right");
+          },
+        });
+      }
+    }
+
     document.removeEventListener("mousemove", onResizeDragMove, true);
     document.removeEventListener("mouseup", onResizeDragEnd, true);
     resizeState = null;
@@ -646,10 +757,8 @@
     endResizeDrag();
   }
 
-  function cancelResizeDrag() {
-    if (!resizeState) return;
+  function restoreResizeStyles(el, originals) {
     const {
-      el,
       originalWidth,
       originalHeight,
       originalBoxSizing,
@@ -659,8 +768,7 @@
       originalLeft,
       originalMarginBottom,
       originalMarginRight,
-      overflowOverrides,
-    } = resizeState;
+    } = originals;
 
     if (originalWidth) el.style.setProperty("width", originalWidth, "important");
     else el.style.removeProperty("width");
@@ -688,6 +796,35 @@
 
     if (originalMarginRight) el.style.setProperty("margin-right", originalMarginRight, "important");
     else el.style.removeProperty("margin-right");
+  }
+
+  function cancelResizeDrag() {
+    if (!resizeState) return;
+    const {
+      el,
+      originalWidth,
+      originalHeight,
+      originalBoxSizing,
+      originalFlex,
+      originalPosition,
+      originalTop,
+      originalLeft,
+      originalMarginBottom,
+      originalMarginRight,
+      overflowOverrides,
+    } = resizeState;
+
+    restoreResizeStyles(el, {
+      originalWidth,
+      originalHeight,
+      originalBoxSizing,
+      originalFlex,
+      originalPosition,
+      originalTop,
+      originalLeft,
+      originalMarginBottom,
+      originalMarginRight,
+    });
 
     restoreOverflow(overflowOverrides);
 
@@ -696,6 +833,18 @@
 
   function removeBlock(el) {
     el.style.setProperty("display", "none", "important");
+  }
+
+  function removeBlockTracked(el) {
+    const originalDisplay = el.style.getPropertyValue("display");
+    removeBlock(el);
+    pushHistory({
+      undo: () => {
+        if (originalDisplay) el.style.setProperty("display", originalDisplay, "important");
+        else el.style.removeProperty("display");
+      },
+      redo: () => removeBlock(el),
+    });
   }
 
   // Heurístiques per detectar banners/blocs publicitaris habituals: noms de
@@ -801,46 +950,82 @@
       node = node.parentElement;
     }
 
+    const changes = [];
+
     let container = document.body;
     for (const keepEl of chain) {
       for (const sibling of Array.from(container.children)) {
         if (sibling !== keepEl) {
+          const original = sibling.style.getPropertyValue("display");
           sibling.style.setProperty("display", "none", "important");
+          changes.push({ el: sibling, prop: "display", original, value: "none" });
         }
       }
       container = keepEl;
     }
 
-    reflowSelection(chain, selectedEl);
+    reflowSelection(chain, selectedEl, changes);
+
+    pushHistory({
+      undo: () => {
+        for (const { el, prop, original } of changes) {
+          if (original) el.style.setProperty(prop, original, "important");
+          else el.style.removeProperty(prop);
+        }
+      },
+      redo: () => {
+        for (const { el, prop, value } of changes) {
+          el.style.setProperty(prop, value, "important");
+        }
+      },
+    });
   }
 
   // Els contenidors intermedis solien dimensionar el bloc seleccionat via
   // flex/grid repartit entre germans (ara amagats), fent-lo col·lapsar a la
   // seva mida mínima. Forcem cada ancestre a block/100% i el contenidor
   // exterior a un 90% centrat perquè el bloc recuperi una amplada llegible.
-  function reflowSelection(chain, selectedEl) {
+  function reflowSelection(chain, selectedEl, changes) {
     const ancestors = chain.slice(0, -1);
 
     for (const ancestor of ancestors) {
       const computedDisplay = getComputedStyle(ancestor).display;
       if (/flex|grid|table/.test(computedDisplay)) {
+        const original = ancestor.style.getPropertyValue("display");
         ancestor.style.setProperty("display", "block", "important");
+        changes.push({ el: ancestor, prop: "display", original, value: "block" });
       }
-      ancestor.style.setProperty("width", "100%", "important");
-      ancestor.style.setProperty("max-width", "100%", "important");
-      ancestor.style.setProperty("float", "none", "important");
-      ancestor.style.setProperty("position", "static", "important");
+
+      for (const prop of ["width", "max-width", "float", "position"]) {
+        const original = ancestor.style.getPropertyValue(prop);
+        const value = prop === "width" || prop === "max-width" ? "100%" : prop === "float" ? "none" : "static";
+        ancestor.style.setProperty(prop, value, "important");
+        changes.push({ el: ancestor, prop, original, value });
+      }
     }
 
     const outer = chain[0];
     if (outer) {
+      const widthOriginal = outer.style.getPropertyValue("width");
       outer.style.setProperty("width", "90%", "important");
+      changes.push({ el: outer, prop: "width", original: widthOriginal, value: "90%" });
+
+      const maxWidthOriginal = outer.style.getPropertyValue("max-width");
       outer.style.setProperty("max-width", "1400px", "important");
+      changes.push({ el: outer, prop: "max-width", original: maxWidthOriginal, value: "1400px" });
+
+      const marginOriginal = outer.style.getPropertyValue("margin");
       outer.style.setProperty("margin", "0 auto", "important");
+      changes.push({ el: outer, prop: "margin", original: marginOriginal, value: "0 auto" });
     }
 
+    const widthOriginal = selectedEl.style.getPropertyValue("width");
     selectedEl.style.setProperty("width", "100%", "important");
+    changes.push({ el: selectedEl, prop: "width", original: widthOriginal, value: "100%" });
+
+    const maxWidthOriginal = selectedEl.style.getPropertyValue("max-width");
     selectedEl.style.setProperty("max-width", "100%", "important");
+    changes.push({ el: selectedEl, prop: "max-width", original: maxWidthOriginal, value: "100%" });
   }
 
   function startPicking(pickMode) {
